@@ -6,12 +6,13 @@ const uefi = std.os.uefi;
 const cc = uefi.cc;
 const mem = std.mem;
 const fmt = std.fmt;
+
 const Http = @import("http.zig").Http;
 const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBinding;
 const Status = uefi.Status;
 const L = std.unicode.utf8ToUtf16LeStringLiteral;
-const rem = @import("rem");
-const mymem = @import("mem.zig");
+const Parser = @import("md/parser.zig");
+
 var heap = uefi.pool_allocator;
 
 // MSFROG OS ascii art
@@ -46,32 +47,23 @@ pub fn main() noreturn {
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services;
 
-    // This is the text that will be read by the parser.
-    // Since the parser accepts Unicode codepoints, the text must be decoded before it can be used.
-    const input = "<!doctype html><html><h1 style=bold>Your text goes here!</h1>";
-    const decoded_input = &rem.util.utf8DecodeStringComptime(input);
-
-    // Create the DOM in which the parsed Document will be created.
-    var dom = rem.dom.Dom{ .allocator = heap };
-    defer dom.deinit();
-
-    // Create the HTML parser.
-    var parser = try rem.Parser.init(&dom, decoded_input, heap, .report, false);
-    defer parser.deinit();
-
-    // This causes the parser to read the input and produce a Document.
-    try parser.run();
-
-    // `errors` returns the list of parse errors that were encountered while parsing.
-    // Since we know that our input was well-formed HTML, we expect there to be 0 parse errors.
-    const errors = parser.errors();
-    std.debug.assert(errors.len == 0);
-
-    const document = parser.getDocument();
-    try rem.util.printDocument(term.writer, document, &dom, heap);
-    term.printf("wtf this worked???\n", .{});
+    main_with_error() catch |e| {
+        term.printf("ERROR: {s}\r\n", .{@errorName(e)});
+        @panic("ERROR");
+    };
 
     arch.hang();
+}
+
+fn main_with_error() !void {
+    var data = "#### LMFAO\n- item";
+    var parser = Parser.init(data);
+
+    while (try parser.next()) |node| {
+        term.printf("node: {any}\r\n", .{node});
+    }
+
+    term.printf("wtf this worked???\n", .{});
 }
 
 // must provide a panic implementation, similar to how Rust forces you to define

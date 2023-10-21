@@ -65,12 +65,6 @@ pub fn build(b: *std.Build) void {
     });
     exe.step.dependOn(&stub.step);
     exe.linkLibrary(stub);
-    exe.addAnonymousModule("rem", .{ .source_file = .{
-        .path = "rem/rem.zig",
-    } });
-    exe.addIncludePath(.{
-        .path = "/usr/include",
-    });
 
     b.installArtifact(exe);
 
