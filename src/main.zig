@@ -11,16 +11,11 @@ const Http = @import("http.zig").Http;
 const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBinding;
 const Status = uefi.Status;
 const L = std.unicode.utf8ToUtf16LeStringLiteral;
-<<<<<<< HEAD
 const Parser = @import("md/parser.zig");
-
-var heap = uefi.pool_allocator;
-=======
-const lexbor = @import("lexbor.zig");
-const mymem = @import("mem.zig");
 const screen = @import("screen.zig");
 const font = @import("font.zig");
->>>>>>> 022f6503fb3ece2ab4f4b6e849fb452f00c49564
+
+var heap = uefi.pool_allocator;
 
 // MSFROG OS ascii art
 const logo = [_][]const u8{
@@ -52,16 +47,7 @@ pub fn main() noreturn {
     }
 
     const boot_services = uefi.system_table.boot_services.?;
-<<<<<<< HEAD
-    _ = boot_services;
 
-    main_with_error() catch |e| {
-        term.printf("ERROR: {s}\r\n", .{@errorName(e)});
-        @panic("ERROR");
-    };
-=======
-    const lmao = mymem.malloc(1);
-    term.printf("mem: {?}\r\n", .{lmao});
     font.init();
     var fb = screen.init(boot_services);
 
@@ -70,19 +56,6 @@ pub fn main() noreturn {
     fb.text(.{ 100, 140 }, font.h2, "Hello World!");
     fb.text(.{ 100, 160 }, font.h3, "Hello World!");
     fb.text(.{ 100, 175 }, font.p, "Hello World!");
-
-    //_ = lexbor.init();
-    //const doc = lexbor.Html.docCreate();
-    //if (doc == null) {
-    //    term.printf("Failed to init document", .{});
-    //    arch.hang();
-    //}
-
-    //const status = lexbor.Html.docParse(doc.?, "<h1>hello world</h1>", 20);
-    //if (status != 0) {
-    //    term.printf("Failed to parse html", .{});
-    // }
->>>>>>> 022f6503fb3ece2ab4f4b6e849fb452f00c49564
 
     arch.hang();
 }
