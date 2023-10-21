@@ -12,6 +12,8 @@ const Status = uefi.Status;
 const L = std.unicode.utf8ToUtf16LeStringLiteral;
 const lexbor = @import("lexbor.zig");
 const mymem = @import("mem.zig");
+const screen = @import("screen.zig");
+const font = @import("font.zig");
 
 // MSFROG OS ascii art
 const logo = [_][]const u8{
@@ -43,21 +45,28 @@ pub fn main() noreturn {
     }
 
     const boot_services = uefi.system_table.boot_services.?;
-    _ = boot_services;
     const lmao = mymem.malloc(1);
     term.printf("mem: {?}\r\n", .{lmao});
+    font.init();
+    var fb = screen.init(boot_services);
 
-    _ = lexbor.init();
-    const doc = lexbor.Html.docCreate();
-    if (doc == null) {
-        term.printf("Failed to init document", .{});
-        arch.hang();
-    }
+    fb.clear();
+    fb.text(.{ 100, 100 }, font.h1, "Hello World!");
+    fb.text(.{ 100, 140 }, font.h2, "Hello World!");
+    fb.text(.{ 100, 160 }, font.h3, "Hello World!");
+    fb.text(.{ 100, 175 }, font.p, "Hello World!");
 
-    const status = lexbor.Html.docParse(doc.?, "<h1>hello world</h1>", 20);
-    if (status != 0) {
-        term.printf("Failed to parse html", .{});
-    }
+    //_ = lexbor.init();
+    //const doc = lexbor.Html.docCreate();
+    //if (doc == null) {
+    //    term.printf("Failed to init document", .{});
+    //    arch.hang();
+    //}
+
+    //const status = lexbor.Html.docParse(doc.?, "<h1>hello world</h1>", 20);
+    //if (status != 0) {
+    //    term.printf("Failed to parse html", .{});
+    // }
 
     arch.hang();
 }
