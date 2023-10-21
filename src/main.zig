@@ -11,6 +11,7 @@ const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBindin
 const Status = uefi.Status;
 const L = std.unicode.utf8ToUtf16LeStringLiteral;
 const lexbor = @import("lexbor.zig");
+const mymem = @import("mem.zig");
 
 // MSFROG OS ascii art
 const logo = [_][]const u8{
@@ -37,12 +38,14 @@ fn callback(event: uefi.Event, ctx: ?*anyopaque) callconv(cc) void {
 
 pub fn main() noreturn {
     term.init();
-
-    // const boot_services = uefi.system_table.boot_services.?;
-
     for (logo) |line| {
         term.printf("{s}\r\n", .{line});
     }
+
+    const boot_services = uefi.system_table.boot_services.?;
+    _ = boot_services;
+    const lmao = mymem.malloc(1);
+    term.printf("mem: {any}\r\n", .{lmao});
 
     _ = lexbor.init();
     const doc = lexbor.Html.docCreate();

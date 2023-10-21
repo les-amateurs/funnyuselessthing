@@ -9,16 +9,14 @@ const features = Target.x86.Feature;
 const cp_cmd_str = [_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" };
 const run_cmd_str = [_][]const u8{
     "qemu-system-x86_64",
-    "-bios",
-    "./edk2/Build/OvmfX64/DEBUG_GCC/FV/OVMF.fd",
     "-L",
     "uefi/debug",
     "-drive",
     "file=fat:rw:uefi/shared,format=raw",
-    "-netdev",
-    "user,id=mynet0",
-    "-device",
-    "virtio-net,netdev=mynet0",
+    "-machine",
+    "q35,smm=on,accel=kvm",
+    "-pflash",
+    "uefi/OVMF.fd",
 };
 
 pub fn build(b: *std.Build) void {
@@ -60,7 +58,9 @@ pub fn build(b: *std.Build) void {
     });
     exe.step.dependOn(&stub.step);
     exe.linkLibrary(stub);
-    exe.addIncludePath(.{ .path = "/usr/include", });
+    exe.addIncludePath(.{
+        .path = "/usr/include",
+    });
     b.installArtifact(exe);
 
     const cp_cmd = b.addSystemCommand(&cp_cmd_str);
