@@ -9,25 +9,14 @@ const features = Target.x86.Feature;
 const cp_cmd_str = [_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" };
 const run_cmd_str = [_][]const u8{
     "qemu-system-x86_64",
-    "-bios",
-    "../edk2/Build/OvmfX64/DEBUG_GCC/FV/OVMF.fd",
     "-L",
     "uefi/debug",
     "-drive",
     "file=fat:rw:uefi/shared,format=raw",
-    "-netdev",
-    "user,id=mynet0",
-    "-device",
-    "virtio-net,netdev=mynet0",
-    "-debugcon",
-    "stdio",
-    "-global",
-    "isa-debugcon.iobase=0x3fd",
-    "-d",
-    "in_asm",
-    "-singlestep",
-    // "-s",
-    // "-S",
+    "-machine",
+    "q35,smm=on,accel=kvm",
+    "-drive",
+    "if=pflash,format=raw,unit=0,file=uefi/OVMF.fd,readonly=on",
 };
 
 pub fn build(b: *std.Build) void {

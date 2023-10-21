@@ -16,3 +16,5 @@ src/frames/*.tga
 dist/boot.iso
 dist/OVMF.fd
 dist/dist.zip
+
+edk2/

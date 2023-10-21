@@ -114,7 +114,7 @@ pub fn main() noreturn {
         status = http.?.request(&token);
         switch (status) {
             Status.Success => break,
-            Status.NoMapping => term.printf("[-] no mapping\r\n", .{}),
+            // Status.NoMapping => term.printf("[-] no mapping\r\n", .{}),
             else => {
                 term.printf("[!] status: {any}\r\n", .{status});
                 @panic("failed to send http request");
