@@ -10,8 +10,9 @@ const Http = @import("http.zig").Http;
 const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBinding;
 const Status = uefi.Status;
 const L = std.unicode.utf8ToUtf16LeStringLiteral;
-const lexbor = @import("lexbor.zig");
+const rem = @import("rem");
 const mymem = @import("mem.zig");
+var heap = uefi.pool_allocator;
 
 // MSFROG OS ascii art
 const logo = [_][]const u8{
@@ -44,20 +45,31 @@ pub fn main() noreturn {
 
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services;
-    const lmao = mymem.malloc(1);
-    term.printf("mem: {?}\r\n", .{lmao});
 
-    _ = lexbor.init();
-    const doc = lexbor.Html.docCreate();
-    if (doc == null) {
-        term.printf("Failed to init document", .{});
-        arch.hang();
-    }
+    // This is the text that will be read by the parser.
+    // Since the parser accepts Unicode codepoints, the text must be decoded before it can be used.
+    const input = "<!doctype html><html><h1 style=bold>Your text goes here!</h1>";
+    const decoded_input = &rem.util.utf8DecodeStringComptime(input);
 
-    const status = lexbor.Html.docParse(doc.?, "<h1>hello world</h1>", 20);
-    if (status != 0) {
-        term.printf("Failed to parse html", .{});
-    }
+    // Create the DOM in which the parsed Document will be created.
+    var dom = rem.dom.Dom{ .allocator = heap };
+    defer dom.deinit();
+
+    // Create the HTML parser.
+    var parser = try rem.Parser.init(&dom, decoded_input, heap, .report, false);
+    defer parser.deinit();
+
+    // This causes the parser to read the input and produce a Document.
+    try parser.run();
+
+    // `errors` returns the list of parse errors that were encountered while parsing.
+    // Since we know that our input was well-formed HTML, we expect there to be 0 parse errors.
+    const errors = parser.errors();
+    std.debug.assert(errors.len == 0);
+
+    const document = parser.getDocument();
+    try rem.util.printDocument(term.writer, document, &dom, heap);
+    term.printf("wtf this worked???\n", .{});
 
     arch.hang();
 }

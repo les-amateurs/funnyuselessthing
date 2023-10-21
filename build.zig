@@ -1,10 +1,17 @@
 const std = @import("std");
+const fs = std.fs;
+const mem = std.mem;
 
+const ArrayList = std.ArrayList;
+const Dir = fs.Dir;
+const IterableDir = fs.IterableDir;
 const Target = std.Target;
 const Feature = Target.Cpu.Feature;
 const CrossTarget = std.zig.CrossTarget;
 
 const features = Target.x86.Feature;
+var manager = std.heap.GeneralPurposeAllocator(.{}){};
+var heap = manager.allocator();
 
 const cp_cmd_str = [_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" };
 const run_cmd_str = [_][]const u8{
@@ -58,16 +65,12 @@ pub fn build(b: *std.Build) void {
     });
     exe.step.dependOn(&stub.step);
     exe.linkLibrary(stub);
+    exe.addAnonymousModule("rem", .{ .source_file = .{
+        .path = "rem/rem.zig",
+    } });
     exe.addIncludePath(.{
         .path = "/usr/include",
     });
-    const lexbor = b.addStaticLibrary(.{
-        .name = "liblexbor_static.a",
-        .root_source_file = .{ .path = "/usr/lib/liblexbor_static.a" },
-        .target = target,
-        .optimize = optimize,
-    });
-    b.installArtifact(lexbor);
 
     b.installArtifact(exe);
 
@@ -78,4 +81,39 @@ pub fn build(b: *std.Build) void {
     cp_cmd.step.dependOn(b.getInstallStep());
     run_cmd.step.dependOn(&cp_cmd.step);
     run_step.dependOn(&run_cmd.step);
+}
+
+fn files(path: []const u8, ext: []const u8) !ArrayList([]const u8) {
+    var file_list = ArrayList([]const u8).init(heap);
+
+    var directory = try fs.cwd().openIterableDir(path, .{});
+    defer directory.close();
+
+    var it = directory.iterate();
+    while (try it.next()) |entry| {
+        switch (entry.kind) {
+            .file => {
+                if (mem.eql(u8, ext, fs.path.extension(entry.name))) {
+                    const file_path = try fs.path.join(heap, &[_][]const u8{
+                        path,
+                        entry.name,
+                    });
+                    try file_list.append(file_path);
+                }
+            },
+            .directory => {
+                const directory_path = try fs.path.join(heap, &[_][]const u8{
+                    path,
+                    entry.name,
+                });
+                const recursive = try files(directory_path, ext);
+                try file_list.appendSlice(recursive.items);
+                recursive.deinit();
+                heap.free(directory_path);
+            },
+            else => {},
+        }
+    }
+
+    return file_list;
 }
