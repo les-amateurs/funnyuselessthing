@@ -50,13 +50,13 @@ pub fn main() noreturn {
     _ = lexbor.init();
     const doc = lexbor.Html.docCreate();
     if (doc == null) {
-        term.printf("Failed to init document");
+        term.printf("Failed to init document", .{});
         arch.hang();
     }
 
     const status = lexbor.Html.docParse(doc, "<h1>hello world</h1>", 20);
     if (status != 0) {
-        term.printf("Failed to parse html");
+        term.printf("Failed to parse html", .{});
     }
 
     arch.hang();
