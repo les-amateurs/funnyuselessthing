@@ -1,0 +1,5 @@
+SecCoreStartupWithStack(0xFFFCC000, 0x820000)
+Debug Timer: FSB Clock    = 0
+Debug Timer: Divisor      = 2
+Debug Timer: Frequency    = 0
+Debug Timer: InitialCount = 0
