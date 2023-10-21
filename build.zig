@@ -15,8 +15,8 @@ const run_cmd_str = [_][]const u8{
     "file=fat:rw:uefi/shared,format=raw",
     "-machine",
     "q35,smm=on,accel=kvm",
-    "-drive",
-    "if=pflash,format=raw,unit=0,file=uefi/OVMF.fd,readonly=on",
+    "-pflash",
+    "uefi/OVMF.fd",
 };
 
 pub fn build(b: *std.Build) void {
