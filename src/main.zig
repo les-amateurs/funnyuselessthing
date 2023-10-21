@@ -41,7 +41,7 @@ pub fn main() noreturn {
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services;
     const lmao = mymem.malloc(1);
-    term.printf("mem: {any}\r\n", .{lmao});
+    _ = lmao;
     arch.hang();
 }
 

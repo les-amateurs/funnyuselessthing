@@ -7,11 +7,7 @@ pub export fn malloc(size: usize) callconv(.C) ?*anyopaque {
     return @ptrCast(m.ptr);
 }
 
-pub export fn free(ptr: ?*anyopaque) callconv(.C) void {
-    if (ptr) |nonnull| {
-        allocator.free(nonnull);
-    }
-}
+pub export fn free(ptr: ?*anyopaque) callconv(.C) void {}
 
 pub export fn realloc(ptr: ?*anyopaque, newsize: usize) callconv(.C) ?*anyopaque {
     free(ptr);
