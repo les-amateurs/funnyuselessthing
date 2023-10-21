@@ -45,7 +45,7 @@ pub fn main() noreturn {
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services;
     const lmao = mymem.malloc(1);
-    term.printf("mem: {any}\r\n", .{lmao});
+    term.printf("mem: {?}\r\n", .{lmao});
 
     _ = lexbor.init();
     const doc = lexbor.Html.docCreate();
@@ -54,7 +54,7 @@ pub fn main() noreturn {
         arch.hang();
     }
 
-    const status = lexbor.Html.docParse(doc, "<h1>hello world</h1>", 20);
+    const status = lexbor.Html.docParse(doc.?, "<h1>hello world</h1>", 20);
     if (status != 0) {
         term.printf("Failed to parse html", .{});
     }

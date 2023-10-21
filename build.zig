@@ -61,6 +61,14 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(.{
         .path = "/usr/include",
     });
+    const lexbor = b.addStaticLibrary(.{
+        .name = "liblexbor_static.a",
+        .root_source_file = .{ .path = "/usr/lib/liblexbor_static.a" },
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(lexbor);
+
     b.installArtifact(exe);
 
     const cp_cmd = b.addSystemCommand(&cp_cmd_str);
