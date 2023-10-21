@@ -10,6 +10,7 @@ const Http = @import("http.zig").Http;
 const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBinding;
 const Status = uefi.Status;
 const L = std.unicode.utf8ToUtf16LeStringLiteral;
+const lexbor = @import("lexbor.zig");
 const mymem = @import("mem.zig");
 
 // MSFROG OS ascii art
@@ -37,11 +38,27 @@ fn callback(event: uefi.Event, ctx: ?*anyopaque) callconv(cc) void {
 
 pub fn main() noreturn {
     term.init();
+    for (logo) |line| {
+        term.printf("{s}\r\n", .{line});
+    }
 
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services;
     const lmao = mymem.malloc(1);
-    _ = lmao;
+    term.printf("mem: {any}\r\n", .{lmao});
+
+    _ = lexbor.init();
+    const doc = lexbor.Html.docCreate();
+    if (doc == null) {
+        term.printf("Failed to init document");
+        arch.hang();
+    }
+
+    const status = lexbor.Html.docParse(doc, "<h1>hello world</h1>", 20);
+    if (status != 0) {
+        term.printf("Failed to parse html");
+    }
+
     arch.hang();
 }
 

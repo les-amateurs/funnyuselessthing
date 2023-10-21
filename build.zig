@@ -58,6 +58,9 @@ pub fn build(b: *std.Build) void {
     });
     exe.step.dependOn(&stub.step);
     exe.linkLibrary(stub);
+    exe.addIncludePath(.{
+        .path = "/usr/include",
+    });
     b.installArtifact(exe);
 
     const cp_cmd = b.addSystemCommand(&cp_cmd_str);
