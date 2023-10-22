@@ -6,7 +6,7 @@ const ArrayList = std.ArrayList;
 const Self = @This();
 const Tokenizer = @import("tokenizer.zig");
 const Token = Tokenizer.Token;
-const Nodes = ArrayList(*Node);
+pub const Nodes = ArrayList(*Node);
 const Lines = ArrayList([]const u8);
 
 const heap = uefi.pool_allocator;
@@ -25,9 +25,10 @@ const Type = enum {
     text,
 };
 
-const Node = struct {
+pub const Node = struct {
     type: Type,
     children: Nodes,
+    raw: []const u8 = "",
 };
 
 tokenizer: Tokenizer,
