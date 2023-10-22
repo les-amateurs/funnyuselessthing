@@ -50,14 +50,21 @@ var col: u32 = 0;
 var fb: screen.FrameBuffer = undefined;
 
 fn addLine() void {
+    while (file.items.len < line + 1) {
+        file.append(ArrayList(u8).init(heap)) catch @panic("OOM");
+    }
     file.insert(line, ArrayList(u8).init(heap)) catch @panic("OOM");
     line += 1;
+    col = 0;
 }
 
 const Dir = enum(u16) { up = 1, down = 2, left = 4, right = 3 };
 
 fn typeChar(char: u8) void {
     term.printf("{c}", .{ char });
+    while (file.items.len < line + 1) {
+        file.append(ArrayList(u8).init(heap)) catch @panic("OOM");
+    }
     file.items[line].insert(col, char) catch @panic("OOM");
     col += 1;
 }
@@ -67,17 +74,19 @@ fn moveCursor(dir: Dir) void {
         .up => {
             if (line == 0) return;
             line -= 1;
+            col = 0;
         },
         .down => {
             if (line == @as(u32, @truncate(file.items.len - 1))) return;
             line += 1;
+            col = 0;
         },
         .left => {
             if (col == 0) return;
             col -= 1;
         },
         .right => {
-            if (col == @as(u32, @truncate(file.items[line].items.len - 1))) return;
+            if (col == @as(u32, @truncate(file.items[line].items.len))) return;
             col += 1;
         },
     }
@@ -87,14 +96,16 @@ fn moveCursor(dir: Dir) void {
 fn switchMode() void {
     switch (mode) {
         .edit => {
+            mode = .visual;
             var string: []const u8 = "";
             for (file.items) |row| {
                 string = mem.concat(heap, u8, &[_][]const u8{ string, "\n", row.items }) catch @panic("OOM");
             }
-            mode = .visual;
+            term.printf("parser\r\n", .{});
             var p = Parser.init(string);
             var nodes = Parser.Nodes.init(heap);
             while (p.next() catch @panic("oops node failed")) |node| {
+                term.printf("node type: {s}\r\n", .{ @tagName(node.type)});
                 nodes.append(node.clone()) catch @panic("OOM");
             }
             var scroll: u32 = 16;
@@ -149,32 +160,35 @@ pub fn main() noreturn {
     while (true) {
         if (term.poll()) |key| {
             fb.clear();
-
-            if (key.scan_code == 17) {
-                switchMode();
-                continue;
-            } else if (key.scan_code < 5 and mode == .edit) {
-                moveCursor(@enumFromInt(key.scan_code));
-                fb.edit(file, line, col);
-                continue;
-            } else if (key.scan_code == 0) {
-                addLine();
-                continue;
+            switch(key.scan_code) {
+                1,2,3,4 => {
+                    if (mode == .edit) {
+                        moveCursor(@enumFromInt(key.scan_code));
+                        fb.edit(file, line, col);
+                        continue;
+                    }
+                },
+                17 => {
+                    switchMode();
+                    continue;
+                },
+                else => {},
             }
 
             switch(mode) {
                 .edit => {
-                   if (key.unicode_char > 0) {
+                    if (key.unicode_char == 0x0d) {
+                        addLine();
+                    } else if (key.unicode_char > 0) {
                         typeChar(@as(u8, @truncate(key.unicode_char)));
-                        fb.edit(file, line, col);
-
                     } 
+                    fb.edit(file, line, col);
                 },
                 .visual => {}
             }
 
-            // term.printf("ch: {x}\r\n", .{key.unicode_char});
-            // term.printf("sc: {x}\r\n", .{key.scan_code});
+            term.printf("ch: {x}\r\n", .{key.unicode_char});
+            term.printf("sc: {x}\r\n", .{key.scan_code});
         }
     }
 

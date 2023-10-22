@@ -48,16 +48,23 @@ pub const FrameBuffer = struct {
         }
     }
     
-    pub fn char(self: *Self, bl: Vec2, glyph: font.Glyph, inverted: bool) void {
+    pub fn char(self: *Self, bl: Vec2,set: font.GlyphSet, glyph: font.Glyph, inverted: bool) void {
         var i: u32 = 0;
         for (bl[1] - glyph.height..bl[1]) |y| {
             for(bl[0]..bl[0] + glyph.width) |x| {
                 // we want to invert the colors, so 255 is white and 0 is black
-                var data = glyph.data[i];
-                if (!inverted) data = 255 - glyph.data[i]; 
+                var data = 255 - glyph.data[i];
                 const color = 0xff000000 + @as(u32, data) * 0x010101;
                 self.buf[y * self.width + x] = color;
                 i += 1;
+            }
+        }
+        if (inverted) {
+            for(bl[1] - set.max_h..bl[1]) |y| {
+                for(bl[0]..bl[0] + set.max_w) |x| {
+                    const ogColor = self.buf[y * self.width + x];
+                    self.buf[y * self.width + x] = ~ogColor;
+                }
             }
         }
     }
@@ -66,9 +73,9 @@ pub const FrameBuffer = struct {
         var left: u32 = 0;
         for (0..,str) |i, c| {
             if (selected) |index| {
-                self.char(.{bl[0] + left, bl[1]}, set.get(c), i == index);
+                self.char(.{bl[0] + left, bl[1]}, set, set.get(c), i == index);
             } else {
-                self.char(.{bl[0] + left, bl[1]}, set.get(c), false);
+                self.char(.{bl[0] + left, bl[1]}, set, set.get(c), false);
             }
             left += set.max_w;
         }
