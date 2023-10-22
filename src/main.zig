@@ -38,7 +38,6 @@ fn addLine() void {
 const Dir = enum(u16) { up = 1, down = 2, left = 4, right = 3 };
 
 fn typeChar(char: u8) void {
-    term.printf("{c}", .{char});
     while (file.items.len < line + 1) {
         file.append(ArrayList(u8).init(heap)) catch @panic("OOM");
     }
@@ -167,18 +166,6 @@ fn main_with_error() !void {
     while (try parser.next()) |node| {
         term.printf("type: {s}\r\n", .{@tagName(node.type)});
         switch (node.type) {
-            .h1, .h2, .h3 => {
-                term.printf("header: {s}\r\n", .{node.children.items[0].raw});
-            },
-            .listitem => {
-                term.printf("list: {s}\r\n", .{node.children.items[0].raw});
-            },
-            .link => {
-                term.printf("url: {s} {s}\r\n", .{ node.children.items[0].raw, node.children.items[1].raw });
-            },
-            .text => {
-                term.printf("text: {s}\r\n", .{node.raw});
-            },
             else => {},
         }
     }
