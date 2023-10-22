@@ -47,48 +47,45 @@ pub const FrameBuffer = struct {
             }
         }
     }
+
+    pub fn invertRect(self: *Self, line: u32, col: u32) void {
+        const p1 = .{16 + col * font.p.max_w, 16 + line * (font.p.max_h + 2)};
+        const p2 = .{16 + (col + 1) * font.p.max_w, 16 + (line + 1) * (font.p.max_h + 2)};
+        for (p1[1]..p2[1]) |y| {
+            for (p1[0]..p2[0]) |x| {
+                const ogColor = self.buf[y * self.width + x];
+                self.buf[y * self.width + x] = ~ogColor;
+            }
+        }
+    }
     
-    pub fn char(self: *Self, bl: Vec2,set: font.GlyphSet, glyph: font.Glyph, inverted: bool) void {
+    pub fn char(self: *Self, bl: Vec2, glyph: font.Glyph) void {
         var i: u32 = 0;
         for (bl[1] - glyph.height..bl[1]) |y| {
             for(bl[0]..bl[0] + glyph.width) |x| {
-                // we want to invert the colors, so 255 is white and 0 is black
                 var data = 255 - glyph.data[i];
                 const color = 0xff000000 + @as(u32, data) * 0x010101;
                 self.buf[y * self.width + x] = color;
                 i += 1;
             }
         }
-        if (inverted) {
-            for(bl[1] - set.max_h..bl[1]) |y| {
-                for(bl[0]..bl[0] + set.max_w) |x| {
-                    const ogColor = self.buf[y * self.width + x];
-                    self.buf[y * self.width + x] = ~ogColor;
-                }
-            }
-        }
     }
 
-    pub fn text(self: *Self, bl: Vec2, set: font.GlyphSet, str: []const u8, selected: ?u32) void {
+    pub fn text(self: *Self, bl: Vec2, set: font.GlyphSet, str: []const u8) void {
         var left: u32 = 0;
-        for (0..,str) |i, c| {
-            if (selected) |index| {
-                self.char(.{bl[0] + left, bl[1]}, set, set.get(c), i == index);
-            } else {
-                self.char(.{bl[0] + left, bl[1]}, set, set.get(c), false);
-            }
+        for (str) |c| {
+            self.char(.{bl[0] + left, bl[1]}, set.get(c));
             left += set.max_w;
         }
     }
 
     pub fn edit(self: *Self, file: ArrayList(ArrayList(u8)), line: u32, col: u32) void {
         var scroll: u32 = 16;
-        for (0..,file.items) |i, lineList| {
-            var selected: ?u32 = null;
-            if (i == line) selected = col;
-            self.text(.{16, scroll + font.p.max_h}, font.p, lineList.items, selected);
+        for (file.items) |lineList| {
+            self.text(.{16, scroll + font.p.max_h}, font.p, lineList.items);
             scroll += font.p.max_h + 2;
         }
+        self.invertRect(line, col);
     }
 
     pub fn markdown(self: *Self, md: Parser.Nodes, scroll: *u32, inheritedFont: ?font.GlyphSet) void {
@@ -105,7 +102,7 @@ pub const FrameBuffer = struct {
                     } else {
                         textFont = font.p; 
                     }
-                    self.text(.{16, scroll.* + textFont.max_h}, textFont, node.raw, null);
+                    self.text(.{16, scroll.* + textFont.max_h}, textFont, node.raw);
                     scroll.* += textFont.max_h;
                 },
                 else => @panic("\"OOM\""),

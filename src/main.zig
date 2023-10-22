@@ -38,7 +38,6 @@ fn addLine() void {
 const Dir = enum(u16) { up = 1, down = 2, left = 4, right = 3 };
 
 fn typeChar(char: u8) void {
-    term.printf("{c}", .{char});
     while (file.items.len < line + 1) {
         file.append(ArrayList(u8).init(heap)) catch @panic("OOM");
     }
@@ -69,6 +68,8 @@ fn moveCursor(dir: Dir) void {
     }
 }
 
+var nodes: Parser.Nodes = undefined;
+
 fn switchMode() void {
     switch (mode) {
         .edit => {
@@ -78,7 +79,7 @@ fn switchMode() void {
                 string = mem.concat(heap, u8, &[_][]const u8{ string, "\n", row.items }) catch @panic("OOM");
             }
             var p = Parser.init(string);
-            var nodes = Parser.Nodes.init(heap);
+            nodes = Parser.Nodes.init(heap);
             while (p.next() catch @panic("oops node failed")) |node| {
                 nodes.append(node.clone()) catch @panic("OOM");
             }
@@ -116,8 +117,12 @@ pub fn main() noreturn {
                     if (mode == .edit) {
                         moveCursor(@enumFromInt(key.scan_code));
                         fb.edit(file, line, col);
-                        continue;
+                    } else if (mode == .visual) {
+                        var scroll: u32 = 16;
+                        fb.markdown(nodes, &scroll, null);
                     }
+
+                    continue;
                 },
                 0x17 => {
                     switchMode();
