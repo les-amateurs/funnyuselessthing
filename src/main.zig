@@ -50,12 +50,16 @@ fn moveCursor(dir: Dir) void {
         .up => {
             if (line == 0) return;
             line -= 1;
-            col = 0;
+            col = @min(col, file.items[line].items.len);
         },
         .down => {
             if (line == @as(u32, @truncate(file.items.len))) return;
             line += 1;
-            col = 0;
+            if (line < file.items.len) {
+                col = @min(col, file.items[line].items.len);
+            } else {
+                col = 0;
+            }
         },
         .left => {
             if (col == 0) return;
@@ -76,7 +80,7 @@ fn switchMode() void {
             mode = .visual;
             var string: []const u8 = "";
             for (file.items) |row| {
-                string = mem.concat(heap, u8, &[_][]const u8{ string, "\n", row.items }) catch @panic("OOM");
+                string = mem.concat(heap, u8, &[_][]const u8{ string, row.items, "\n" }) catch @panic("OOM");
             }
             var p = Parser.init(string);
             nodes = Parser.Nodes.init(heap);
