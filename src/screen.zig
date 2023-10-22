@@ -2,6 +2,7 @@ const std = @import("std");
 const arch = @import("arch.zig");
 const term = @import("term.zig");
 const font = @import("font.zig");
+const Parser = @import("md/parser.zig");
 
 const uefi = std.os.uefi;
 
@@ -67,4 +68,8 @@ pub const FrameBuffer = struct {
             left += set.max;
         }
     }
+
+    //pub fn markdown(self: *Self, md: Parser.Node, scroll: u32) void {
+        
+    //}
 };
