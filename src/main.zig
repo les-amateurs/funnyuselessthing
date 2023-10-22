@@ -6,6 +6,7 @@ const uefi = std.os.uefi;
 const cc = uefi.cc;
 const mem = std.mem;
 const fmt = std.fmt;
+const ArrayList = std.ArrayList;
 
 const Http = @import("http.zig").Http;
 const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBinding;
@@ -40,41 +41,61 @@ fn callback(event: uefi.Event, ctx: ?*anyopaque) callconv(cc) void {
     term.printf("[!] callback!\r\n", .{});
 }
 
+const Mode = enum { edit, visual };
+
+var mode = Mode.edit;
+var file: ArrayList(ArrayList(u8)) = undefined;
+var line: u32 = 0;
+var col: u32 = 0;
+
+fn addLine() void {
+    file.insert(line, ArrayList(u8).init(heap)) catch @panic("OOM");
+    line += 1;
+}
+
+const Dir = enum { up, down, left, right };
+
+fn typeChar(char: u8) void {
+    file.items[line].insert(col, char) catch @panic("OOM");
+    col += 1;
+}
+
+fn moveCursor(dir: Dir) void {
+    switch (dir) {
+        .up => line = @min(0, line - 1),
+        .down => line = @max(line + 1, file.items.len),
+        .left => col = @min(0, col - 1),
+        .right => col = @max(file.items[line].len, col + 1),
+    }
+}
+
+fn switchMode() void {
+    switch (mode) {
+        .edit => mode = .visual,
+        .visual => mode = .edit,
+    }
+}
+
 pub fn main() noreturn {
     term.init();
-    for (logo) |line| {
-        term.printf("{s}\r\n", .{line});
-    }
-
     const boot_services = uefi.system_table.boot_services.?;
 
     // main_with_error() catch |e| {
     //     term.printf("error: {s}\r\n", .{@errorName(e)});
     // };
-
+    //
+    file = ArrayList(ArrayList(u8)).init(heap);
     var fb = screen.init(boot_services);
-
+    addLine();
+    line -= 1;
+    term.printf("{any}", .{file.items});
+    typeChar('#');
+    typeChar(' ');
+    typeChar('H');
+    col = 0;
     fb.clear();
     font.init();
-    var example_tree = Parser.Nodes.init(heap);
-    var hchildren = Parser.Nodes.init(heap);
-    var text_frag = Parser.Node{
-        .type = .text,
-        .children = undefined,
-        .raw = "LMAO",
-    };
-    hchildren.append(&text_frag) catch @panic("OOM");
-    var header = Parser.Node{
-        .type = .h1,
-        .children = hchildren,
-    };
-    example_tree.append(&header) catch @panic("OOM");
-
-    var p_stuff = Parser.Node{ .type = .text, .children = undefined, .raw = "this is a miricle" };
-    example_tree.append(&p_stuff) catch @panic("OOM");
-
-    var scroll: u32 = 16;
-    fb.markdown(example_tree, &scroll, null);
+    fb.edit(file, line, col);
 
     arch.hang();
 }

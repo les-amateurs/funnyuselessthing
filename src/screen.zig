@@ -4,6 +4,7 @@ const term = @import("term.zig");
 const font = @import("font.zig");
 const Parser = @import("md/parser.zig");
 
+const ArrayList = std.ArrayList;
 const uefi = std.os.uefi;
 
 pub const BootServices = uefi.tables.BootServices;
@@ -14,7 +15,6 @@ pub var graphics: *GraphicsOutput = undefined;
 pub fn init(boot_services: *BootServices) FrameBuffer {
     if (boot_services.locateProtocol(&uefi.protocols.GraphicsOutputProtocol.guid, null, @ptrCast(&graphics)) != uefi.Status.Success) { @panic("HSAHHAHAHA"); }
 
-    term.printf("    current mode = {}\r\n", .{graphics.mode.mode});
     const num_pixels = graphics.mode.info.vertical_resolution * graphics.mode.info.horizontal_resolution;
     std.debug.assert(graphics.mode.frame_buffer_size == num_pixels);
     return FrameBuffer { 
@@ -48,24 +48,39 @@ pub const FrameBuffer = struct {
         }
     }
     
-    pub fn char(self: *Self, bl: Vec2, glyph: font.Glyph) void {
+    pub fn char(self: *Self, bl: Vec2, glyph: font.Glyph, inverted: bool) void {
         var i: u32 = 0;
         for (bl[1] - glyph.height..bl[1]) |y| {
             for(bl[0]..bl[0] + glyph.width) |x| {
                 // we want to invert the colors, so 255 is white and 0 is black
-                const inverted = 255 - glyph.data[i];
-                const color = 0xff000000 + @as(u32, inverted) * 0x010101;
+                var data = glyph.data[i];
+                if (!inverted) data = 255 - glyph.data[i]; 
+                const color = 0xff000000 + @as(u32, data) * 0x010101;
                 self.buf[y * self.width + x] = color;
                 i += 1;
             }
         }
     }
 
-    pub fn text(self: *Self, bl: Vec2, set: font.GlyphSet, str: []const u8) void {
+    pub fn text(self: *Self, bl: Vec2, set: font.GlyphSet, str: []const u8, selected: ?u32) void {
         var left: u32 = 0;
-        for (str) |c| {
-            self.char(.{bl[0] + left, bl[1]}, set.get(c));
+        for (0..,str) |i, c| {
+            if (selected) |index| {
+                self.char(.{bl[0] + left, bl[1]}, set.get(c), i == index);
+            } else {
+                self.char(.{bl[0] + left, bl[1]}, set.get(c), false);
+            }
             left += set.max_w;
+        }
+    }
+
+    pub fn edit(self: *Self, file: ArrayList(ArrayList(u8)), line: u32, col: u32) void {
+        var scroll: u32 = 16;
+        for (0..,file.items) |i, lineList| {
+            var selected: ?u32 = null;
+            if (i == line) selected = col;
+            self.text(.{16, scroll + font.p.max_h}, font.p, lineList.items, selected);
+            scroll += font.p.max_h + 2;
         }
     }
 
@@ -83,7 +98,7 @@ pub const FrameBuffer = struct {
                     } else {
                         textFont = font.p; 
                     }
-                    self.text(.{16, scroll.* + textFont.max_h}, textFont, node.raw);
+                    self.text(.{16, scroll.* + textFont.max_h}, textFont, node.raw, null);
                     scroll.* += textFont.max_h;
                 },
                 else => @panic("\"OOM\""),
