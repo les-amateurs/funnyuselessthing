@@ -47,13 +47,14 @@ var mode = Mode.edit;
 var file: ArrayList(ArrayList(u8)) = undefined;
 var line: u32 = 0;
 var col: u32 = 0;
+var fb: screen.FrameBuffer = undefined;
 
 fn addLine() void {
     file.insert(line, ArrayList(u8).init(heap)) catch @panic("OOM");
     line += 1;
 }
 
-const Dir = enum { up, down, left, right };
+const Dir = enum(u16) { up = 1, down = 2, left = 3, right = 4 };
 
 fn typeChar(char: u8) void {
     file.items[line].insert(col, char) catch @panic("OOM");
@@ -63,16 +64,32 @@ fn typeChar(char: u8) void {
 fn moveCursor(dir: Dir) void {
     switch (dir) {
         .up => line = @min(0, line - 1),
-        .down => line = @max(line + 1, file.items.len),
+        .down => line = @max(line + 1, @as(u32, @truncate(file.items.len))),
         .left => col = @min(0, col - 1),
-        .right => col = @max(file.items[line].len, col + 1),
+        .right => col = @max(@as(u32, @truncate(file.items[line].items.len)), col + 1),
     }
 }
 
 fn switchMode() void {
     switch (mode) {
-        .edit => mode = .visual,
-        .visual => mode = .edit,
+        .edit => {
+            var string: []const u8 = "";
+            for (file.items) |row| {
+                string = mem.concat(heap, u8, &[_][]const u8{ string, "\n", row.items }) catch @panic("OOM");
+            }
+            mode = .visual;
+            var p = Parser.init(string);
+            var nodes = Parser.Nodes.init(heap);
+            while (p.next() catch @panic("oops node failed")) |node| {
+                nodes.append(node.clone()) catch @panic("OOM");
+            }
+            var scroll: u32 = 16;
+            fb.markdown(nodes, &scroll, null);
+        },
+        .visual => {
+            mode = .edit;
+            fb.edit(file, line, col);
+        },
     }
 }
 
@@ -84,15 +101,14 @@ pub fn main() noreturn {
     //     term.printf("error: {s}\r\n", .{@errorName(e)});
     // };
     //
+    fb = screen.init(boot_services);
     file = ArrayList(ArrayList(u8)).init(heap);
     main_with_error() catch |e| {
         term.printf("error: {s}\r\n", .{@errorName(e)});
     };
 
-    var fb = screen.init(boot_services);
     addLine();
     line -= 1;
-    term.printf("{any}", .{file.items});
     typeChar('#');
     typeChar(' ');
     typeChar('H');
@@ -100,30 +116,37 @@ pub fn main() noreturn {
     fb.clear();
     font.init();
     fb.edit(file, line, col);
-    var example_tree = Parser.Nodes.init(heap);
-    var hchildren = Parser.Nodes.init(heap);
-    var text_frag = Parser.Node{
-        .type = .text,
-        .children = undefined,
-        .raw = "LMAO",
-    };
-    hchildren.append(&text_frag) catch @panic("OOM");
-    var header = Parser.Node{
-        .type = .h1,
-        .children = hchildren,
-    };
-    example_tree.append(&header) catch @panic("OOM");
-
-    var scroll: u32 = 16;
-    fb.markdown(example_tree, &scroll, null);
 
     // ESC is scan code 17
     // otherwise it returns the character
     // and respects the shift key
     while (true) {
         if (term.poll()) |key| {
-            term.printf("ch: {x}\r\n", .{key.unicode_char});
-            term.printf("sc: {x}\r\n", .{key.scan_code});
+            fb.clear();
+            if (key.scan_code == 17) {
+                switchMode();
+                continue;
+            } else if (key.scan_code < 5 and mode == .edit) {
+                moveCursor(@enumFromInt(key.scan_code));
+                term.printf("{any}", .{key.scan_code});
+                fb.edit(file, line, col);
+                continue;
+            } else if (key.scan_code == 0) {
+                addLine();
+            }
+
+            switch(mode) {
+                .edit => {
+                   if (key.unicode_char > 0) {
+                        typeChar(@as(u8, @truncate(key.unicode_char)));
+                        fb.edit(file, line, col);
+                    } 
+                },
+                .visual => {}
+            }
+
+            // term.printf("ch: {x}\r\n", .{key.unicode_char});
+            // term.printf("sc: {x}\r\n", .{key.scan_code});
         }
     }
 
