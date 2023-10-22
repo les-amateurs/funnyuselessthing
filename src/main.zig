@@ -73,6 +73,16 @@ pub fn main() noreturn {
     var scroll: u32 = 16;
     fb.markdown(example_tree, &scroll, null);
 
+    // ESC is scan code 17
+    // otherwise it returns the character
+    // and respects the shift key
+    while (true) {
+        if (term.poll()) |key| {
+            term.printf("ch: {x}\r\n", .{key.unicode_char});
+            term.printf("sc: {x}\r\n", .{key.scan_code});
+        }
+    }
+
     arch.hang();
 }
 
