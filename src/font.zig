@@ -56,7 +56,7 @@ pub fn enumToGlyphSet(header: Parser.Type) GlyphSet {
         .h2 => h2,
         .h3 => h3,
         .text => p,
-        else => @panic("invalid type provided"),
+        else => h3,
     };
 }
 
