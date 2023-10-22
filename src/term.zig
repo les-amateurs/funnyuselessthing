@@ -7,15 +7,19 @@ const uefi = std.os.uefi;
 const heap = uefi.pool_allocator;
 const str16 = std.unicode.utf8ToUtf16LeStringLiteral;
 
+const Status = uefi.Status;
 const Writer = std.io.Writer;
+const Handle = uefi.Handle;
 pub const Stdout = uefi.protocols.SimpleTextOutputProtocol;
 pub const Stdin = uefi.protocols.SimpleTextInputProtocol;
+pub const StdinEx = uefi.protocols.SimpleTextInputExProtocol;
 pub const InputKey = uefi.protocols.InputKey;
 
 pub var stdout: *Stdout = undefined;
 pub var stdin: *Stdin = undefined;
 pub var columns: usize = undefined;
 pub var rows: usize = undefined;
+pub var stdinEx: *StdinEx = undefined;
 
 // The console output protocol interprets \n as a command to move the cursor down
 // without returning to column zero.
@@ -41,6 +45,14 @@ pub fn init() void {
     _ = stdout.reset(false);
     _ = stdout.setAttribute(0x0F);
     _ = stdout.enableCursor(true);
+}
+
+pub fn poll() ?InputKey {
+    var key: InputKey = undefined;
+    if (stdin.readKeyStroke(&key) != Status.NotReady) {
+        return key;
+    }
+    return null;
 }
 
 pub fn waitForKey() InputKey {

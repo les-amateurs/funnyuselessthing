@@ -28,6 +28,12 @@ pub const Token = union(Type) {
     closing_paren: void,
     fragment: []u8,
 
+    pub fn clone(self: Token) *Token {
+        var new = heap.create(Token) catch @panic("OOM");
+        new.* = self;
+        return new;
+    }
+
     // tag wise comparison only, we do not care about the values
     pub fn cmp(self: Token, other: Token) bool {
         return switch (self) {
