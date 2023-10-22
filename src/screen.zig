@@ -72,8 +72,10 @@ pub const FrameBuffer = struct {
     pub fn text(self: *Self, bl: Vec2, set: font.GlyphSet, str: []const u8) void {
         var left: u32 = 0;
         for (str) |c| {
-            self.char(.{ bl[0] + left, bl[1] }, set.get(c));
-            left += set.max_w;
+            if (std.mem.indexOfScalar(u8, "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`~!@#$%^&*()-_=+[]{}\\|.>,</?;:'\" ", c)) |_| {
+                self.char(.{ bl[0] + left, bl[1] }, set.get(c));
+                left += set.max_w;
+            }
         }
     }
 
@@ -94,6 +96,7 @@ pub const FrameBuffer = struct {
                     self.markdown(node.children, scroll, glyphSet);
                 },
                 .text => {
+                    term.printf("frag: {s}\r\n", .{ node.raw });
                     var textFont: font.GlyphSet = undefined;
                     if (inheritedFont) |f| {
                         textFont = f;

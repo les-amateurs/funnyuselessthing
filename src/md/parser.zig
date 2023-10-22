@@ -79,9 +79,7 @@ pub fn next(self: *Self) !?Node {
     while (try self.tokenizer.next()) |token| {
         if (token.cmp(Token{ .hash = 0 })) {
             var children = try self.consumeLine();
-            if (children.items[0].type == Type.text) {
-                children.items[0].raw = mem.trimLeft(u8, children.items[0].raw, " ");
-            }
+
             return Node{
                 .type = switch (token.hash) {
                     1 => .h1,

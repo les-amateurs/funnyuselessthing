@@ -80,7 +80,10 @@ fn switchMode() void {
             mode = .visual;
             var string: []const u8 = "";
             for (file.items) |row| {
-                string = mem.concat(heap, u8, &[_][]const u8{ string, row.items, "\n" }) catch @panic("OOM");
+                string = mem.concat(heap, u8, &[_][]const u8{ string, row.items }) catch @panic("OOM");
+                if (!mem.endsWith(u8, row.items, "\n")) {
+                    string = mem.concat(heap, u8, &[_][]const u8{ string, "\n" }) catch @panic("OOM");
+                }
             }
             var p = Parser.init(string);
             nodes = Parser.Nodes.init(heap);
@@ -149,7 +152,10 @@ pub fn main() noreturn {
                     }
                     fb.edit(file, line, col);
                 },
-                .visual => {},
+                .visual => {
+                    var scroll: u32 = 16;
+                    fb.markdown(nodes, &scroll, null);
+                },
             }
 
             // term.printf("ch: {x}\r\n", .{key.unicode_char});
