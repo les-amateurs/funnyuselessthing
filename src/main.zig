@@ -18,29 +18,6 @@ const font = @import("font.zig");
 
 var heap = uefi.pool_allocator;
 
-// MSFROG OS ascii art
-const logo = [_][]const u8{
-    \\ __  __  _____ ______ _____   ____   _____    ____   _____ 
-    ,
-    \\|  \/  |/ ____|  ____|  __ \ / __ \ / ____|  / __ \ / ____|
-    ,
-    \\| |\/| |\___ \|  __| |  _  /| |  | | | |_ | | |  | |\___ \ 
-    ,
-    \\| |  | |____) | |    | | \ \| |__| | |__| | | |__| |____) |
-    ,
-    \\|_|  |_|_____/|_|    |_|  \_\\____/ \_____|  \____/|_____/ 
-    ,
-    \\===========================================================
-    ,
-    "\r\n",
-};
-
-fn callback(event: uefi.Event, ctx: ?*anyopaque) callconv(cc) void {
-    _ = ctx;
-    _ = event;
-    term.printf("[!] callback!\r\n", .{});
-}
-
 const Mode = enum { edit, visual };
 
 var mode = Mode.edit;
@@ -61,7 +38,7 @@ fn addLine() void {
 const Dir = enum(u16) { up = 1, down = 2, left = 4, right = 3 };
 
 fn typeChar(char: u8) void {
-    term.printf("{c}", .{ char });
+    term.printf("{c}", .{char});
     while (file.items.len < line + 1) {
         file.append(ArrayList(u8).init(heap)) catch @panic("OOM");
     }
@@ -90,7 +67,6 @@ fn moveCursor(dir: Dir) void {
             col += 1;
         },
     }
-    
 }
 
 fn switchMode() void {
@@ -105,7 +81,7 @@ fn switchMode() void {
             var p = Parser.init(string);
             var nodes = Parser.Nodes.init(heap);
             while (p.next() catch @panic("oops node failed")) |node| {
-                term.printf("node type: {s}\r\n", .{ @tagName(node.type)});
+                term.printf("node type: {s}\r\n", .{@tagName(node.type)});
                 nodes.append(node.clone()) catch @panic("OOM");
             }
             var scroll: u32 = 16;
@@ -121,38 +97,15 @@ fn switchMode() void {
 pub fn main() noreturn {
     term.init();
     const boot_services = uefi.system_table.boot_services.?;
+    _ = boot_services.setWatchdogTimer(0, 0, 0, null);
 
-    // main_with_error() catch |e| {
-    //     term.printf("error: {s}\r\n", .{@errorName(e)});
-    // };
-    //
+    main_with_error() catch @panic("wtf");
+
     fb = screen.init(boot_services);
     file = ArrayList(ArrayList(u8)).init(heap);
-    main_with_error() catch |e| {
-        term.printf("error: {s}\r\n", .{@errorName(e)});
-    };
 
-    addLine();
-    line -= 1;
-    typeChar('#');
-    typeChar(' ');
-    typeChar('H');
-
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    typeChar('H');
-    col = 0;
-    fb.clear();
     font.init();
-    fb.edit(file, line, col);
+    fb.clear();
 
     // ESC is scan code 17
     // otherwise it returns the character
@@ -160,8 +113,8 @@ pub fn main() noreturn {
     while (true) {
         if (term.poll()) |key| {
             fb.clear();
-            switch(key.scan_code) {
-                1,2,3,4 => {
+            switch (key.scan_code) {
+                1, 2, 3, 4 => {
                     if (mode == .edit) {
                         moveCursor(@enumFromInt(key.scan_code));
                         fb.edit(file, line, col);
@@ -175,16 +128,16 @@ pub fn main() noreturn {
                 else => {},
             }
 
-            switch(mode) {
+            switch (mode) {
                 .edit => {
                     if (key.unicode_char == 0x0d) {
                         addLine();
                     } else if (key.unicode_char > 0) {
                         typeChar(@as(u8, @truncate(key.unicode_char)));
-                    } 
+                    }
                     fb.edit(file, line, col);
                 },
-                .visual => {}
+                .visual => {},
             }
 
             term.printf("ch: {x}\r\n", .{key.unicode_char});
