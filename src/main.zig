@@ -6,6 +6,7 @@ const uefi = std.os.uefi;
 const cc = uefi.cc;
 const mem = std.mem;
 const fmt = std.fmt;
+const ArrayList = std.ArrayList;
 
 const Http = @import("http.zig").Http;
 const HttpServiceBinding = @import("http_service_binding.zig").HttpServiceBinding;
@@ -17,22 +18,105 @@ const font = @import("font.zig");
 
 var heap = uefi.pool_allocator;
 
+const Mode = enum { edit, visual };
+
+var mode = Mode.edit;
+var file: ArrayList(ArrayList(u8)) = undefined;
+var line: u32 = 0;
+var col: u32 = 0;
+var fb: screen.FrameBuffer = undefined;
+
+fn addLine() void {
+    file.insert(line, ArrayList(u8).init(heap)) catch @panic("OOM");
+    line += 1;
+}
+
+const Dir = enum(u16) { up = 1, down = 2, left = 3, right = 4 };
+
+fn typeChar(char: u8) void {
+    if (line >= file.items.len) {
+        file.resize(line + 1) catch @panic("OOM");
+        file.items[line] = ArrayList(u8).init(heap);
+    }
+    file.items[line].insert(col, char) catch @panic("OOM");
+    col += 1;
+}
+
+fn moveCursor(dir: Dir) void {
+    switch (dir) {
+        .up => line = @min(0, line - 1),
+        .down => line = @max(line + 1, @as(u32, @truncate(file.items.len))),
+        .left => col = @min(0, col - 1),
+        .right => col = @max(@as(u32, @truncate(file.items[line].items.len)), col + 1),
+    }
+}
+
+fn switchMode() void {
+    switch (mode) {
+        .edit => {
+            var string: []const u8 = "";
+            for (file.items) |row| {
+                string = mem.concat(heap, u8, &[_][]const u8{ string, "\n", row.items }) catch @panic("OOM");
+            }
+            mode = .visual;
+            var p = Parser.init(string);
+            var nodes = Parser.Nodes.init(heap);
+            while (p.next() catch @panic("oops node failed")) |node| {
+                nodes.append(node.clone()) catch @panic("OOM");
+            }
+            var scroll: u32 = 16;
+            fb.markdown(nodes, &scroll, null);
+        },
+        .visual => {
+            mode = .edit;
+            fb.edit(file, line, col);
+        },
+    }
+}
+
 pub fn main() noreturn {
     term.init();
-
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services.setWatchdogTimer(0, 0, 0, null);
 
-    var fb = screen.init(boot_services);
-    _ = fb;
+    main_with_error() catch @panic("wtf");
+
+    fb = screen.init(boot_services);
+    file = ArrayList(ArrayList(u8)).init(heap);
+
+    font.init();
+    fb.clear();
 
     // ESC is scan code 17
     // otherwise it returns the character
     // and respects the shift key
     while (true) {
         if (term.poll()) |key| {
-            term.printf("ch: {x}\r\n", .{key.unicode_char});
-            term.printf("sc: {x}\r\n", .{key.scan_code});
+            fb.clear();
+            if (key.scan_code == 17) {
+                switchMode();
+                continue;
+            } else if (key.scan_code < 5 and mode == .edit) {
+                moveCursor(@enumFromInt(key.scan_code));
+                term.printf("{any}", .{key.scan_code});
+                fb.edit(file, line, col);
+                continue;
+            } else if (key.scan_code == 0) {
+                addLine();
+            }
+
+            switch (mode) {
+                .edit => {
+                    if (key.unicode_char > 0) {
+                        typeChar(@as(u8, @truncate(key.unicode_char)));
+                        fb.edit(file, line, col);
+                    }
+                },
+                .visual => {},
+            }
+
+            // term.printf("ch: {x}\r\n", .{key.unicode_char});
+            // term.printf("sc: {x}\r\n", .{key.scan_code});
         }
     }
 
