@@ -47,34 +47,31 @@ pub fn main() noreturn {
     }
 
     const boot_services = uefi.system_table.boot_services.?;
-    _ = boot_services;
 
     main_with_error() catch |e| {
         term.printf("error: {s}\r\n", .{@errorName(e)});
     };
 
-    // font.init();
-    // var fb = screen.init(boot_services);
+    var fb = screen.init(boot_services);
 
-    // fb.clear();
-    // fb.text(.{ 100, 100 }, font.h1, "Hello World!");
-    // fb.text(.{ 100, 140 }, font.h2, "Hello World!");
-    // fb.text(.{ 100, 160 }, font.h3, "Hello World!");
-    // fb.text(.{ 100, 175 }, font.p, "Hello World!");
+    fb.clear();
+    font.init();
+    var example_tree = Parser.Nodes.init(heap);
+    var hchildren = Parser.Nodes.init(heap);
+    var text_frag = Parser.Node{
+        .type = .text,
+        .children = undefined,
+        .raw = "LMAO",
+    };
+    hchildren.append(&text_frag) catch @panic("OOM");
+    var header = Parser.Node{
+        .type = .h1,
+        .children = hchildren,
+    };
+    example_tree.append(&header) catch @panic("OOM");
 
-    // var example_tree = Parser.Nodes.init(heap);
-    // var hchildren = Parser.Nodes.init(heap);
-    // var text_frag = Parser.Node{
-    //     .type = .text,
-    //     .children = undefined,
-    //     .raw = "LMAO",
-    // };
-    // hchildren.append(&text_frag) catch @panic("OOM");
-    // var header = Parser.Node{
-    //     .type = .h1,
-    //     .children = hchildren,
-    // };
-    // example_tree.append(&header) catch @panic("OOM");
+    var scroll: u32 = 16;
+    fb.markdown(example_tree, &scroll, null);
 
     arch.hang();
 }

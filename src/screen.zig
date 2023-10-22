@@ -65,11 +65,29 @@ pub const FrameBuffer = struct {
         var left: u32 = 0;
         for (str) |c| {
             self.char(.{bl[0] + left, bl[1]}, set.get(c));
-            left += set.max;
+            left += set.max_w;
         }
     }
 
-    //pub fn markdown(self: *Self, md: Parser.Node, scroll: u32) void {
-        
-    //}
+    pub fn markdown(self: *Self, md: Parser.Nodes, scroll: *u32, inheritedFont: ?font.GlyphSet) void {
+        for (md.items) |node| {
+           switch(node.type) {
+                .h1, .h2, .h3 => {
+                    const glyphSet = font.enumToGlyphSet(node.type);
+                    self.markdown(node.children, scroll, glyphSet);
+                },
+                .text => {
+                    var textFont: font.GlyphSet = undefined;
+                    if (inheritedFont) |f| { 
+                        textFont = f; 
+                    } else {
+                        textFont = font.p; 
+                    }
+                    self.text(.{16, scroll.* + textFont.max_h}, textFont, node.raw);
+                    scroll.* += textFont.max_h;
+                },
+                else => @panic("\"OOM\""),
+            }
+        }
+    }
 };
