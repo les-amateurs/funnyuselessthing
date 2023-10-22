@@ -48,6 +48,10 @@ pub fn main() noreturn {
 
     const boot_services = uefi.system_table.boot_services.?;
 
+    main_with_error() catch |e| {
+        term.printf("error: {s}\r\n", .{@errorName(e)});
+    };
+
     font.init();
     var fb = screen.init(boot_services);
 

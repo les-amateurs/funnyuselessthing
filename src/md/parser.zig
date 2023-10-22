@@ -28,6 +28,7 @@ const Type = enum {
 const Node = struct {
     type: Type,
     children: Nodes,
+    raw: []u8 = undefined,
 };
 
 tokenizer: Tokenizer,
@@ -52,9 +53,9 @@ pub fn next(self: *Self) !?Node {
     var fragment = ArrayList(u8).init(heap);
 
     while (try self.tokenizer.next()) |token| {
-        if (token.cmp(Token.hash{ .count = 0 })) {
+        if (token.cmp(Token{ .hash = 0 })) {
             return Node{
-                .type = switch (token.hash.count) {
+                .type = switch (token.hash) {
                     1 => .h1,
                     2 => .h2,
                     3 => .h3,
@@ -92,7 +93,7 @@ pub fn next(self: *Self) !?Node {
         }
 
         if (token.cmp(Token.fragment)) {
-            try fragment.appendSlice(token.fragment.text);
+            try fragment.appendSlice(token.fragment);
             if (mem.endsWith(fragment.items, '\n')) {
                 return Node{ .text = fragment.items };
             }
