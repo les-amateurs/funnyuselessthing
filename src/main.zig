@@ -31,23 +31,36 @@ fn addLine() void {
     line += 1;
 }
 
-const Dir = enum(u16) { up = 1, down = 2, left = 3, right = 4 };
+const Dir = enum(u16) { up = 1, down = 2, left = 4, right = 3 };
 
 fn typeChar(char: u8) void {
     if (line >= file.items.len) {
         file.resize(line + 1) catch @panic("OOM");
         file.items[line] = ArrayList(u8).init(heap);
     }
+    term.printf("{c}\r\n", .{char});
     file.items[line].insert(col, char) catch @panic("OOM");
     col += 1;
 }
 
 fn moveCursor(dir: Dir) void {
     switch (dir) {
-        .up => line = @min(0, line - 1),
-        .down => line = @max(line + 1, @as(u32, @truncate(file.items.len))),
-        .left => col = @min(0, col - 1),
-        .right => col = @max(@as(u32, @truncate(file.items[line].items.len)), col + 1),
+        .up => {
+            if (line == 0) return;
+            line -= 1;
+        },
+        .down => {
+            if (line == @as(u32, @truncate(file.items.len - 1))) return;
+            line += 1;
+        },
+        .left => {
+            if (col == 0) return;
+            col -= 1;
+        },
+        .right => {
+            if (col == @as(u32, @truncate(file.items[line].items.len - 1))) return;
+            col += 1;
+        },
     }
 }
 
@@ -92,17 +105,19 @@ pub fn main() noreturn {
     // and respects the shift key
     while (true) {
         if (term.poll()) |key| {
-            fb.clear();
+            term.printf("key: {any}\r\n", .{key});
+            // fb.clear();
+
             if (key.scan_code == 17) {
                 switchMode();
                 continue;
             } else if (key.scan_code < 5 and mode == .edit) {
                 moveCursor(@enumFromInt(key.scan_code));
-                term.printf("{any}", .{key.scan_code});
                 fb.edit(file, line, col);
                 continue;
             } else if (key.scan_code == 0) {
                 addLine();
+                continue;
             }
 
             switch (mode) {
