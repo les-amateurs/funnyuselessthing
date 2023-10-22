@@ -1,4 +1,12 @@
 # FUNNY USELESS THING
+an amazing markdown editing experience, with no other distractions for you and your cpu.  
+
+Demo at [https://bit.ly/fut_demo](https://bit.ly/fut_demo). 
+```
+Username: fut
+Password: password
+(yes really), click the editor demo
+```
 
 ## requirements
 - `qemu-system-x86_64`
