@@ -11,7 +11,7 @@ const Lines = ArrayList([]const u8);
 
 const heap = uefi.pool_allocator;
 
-const Type = enum {
+pub const Type = enum {
     h1,
     h2,
     h3,

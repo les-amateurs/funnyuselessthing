@@ -52,15 +52,10 @@ pub fn main() noreturn {
     //     term.printf("error: {s}\r\n", .{@errorName(e)});
     // };
 
-    font.init();
     var fb = screen.init(boot_services);
 
     fb.clear();
-    fb.text(.{ 100, 100 }, font.h1, "Hello World!");
-    fb.text(.{ 100, 140 }, font.h2, "Hello World!");
-    fb.text(.{ 100, 160 }, font.h3, "Hello World!");
-    fb.text(.{ 100, 175 }, font.p, "Hello World!");
-
+    font.init();
     var example_tree = Parser.Nodes.init(heap);
     var hchildren = Parser.Nodes.init(heap);
     var text_frag = Parser.Node{
@@ -74,6 +69,12 @@ pub fn main() noreturn {
         .children = hchildren,
     };
     example_tree.append(&header) catch @panic("OOM");
+
+    var p_stuff = Parser.Node{ .type = .text, .children = undefined, .raw = "this is a miricle" };
+    example_tree.append(&p_stuff) catch @panic("OOM");
+
+    var scroll: u32 = 16;
+    fb.markdown(example_tree, &scroll, null);
 
     arch.hang();
 }

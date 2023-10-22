@@ -3,6 +3,7 @@ const h2_f = @embedFile("font/rast/jb-h2.txt");
 const h3_f = @embedFile("font/rast/jb-h3.txt");
 const p_f = @embedFile("font/rast/jb-p.txt");
 const term = @import("term.zig");
+const Parser = @import("md/parser.zig");
 
 pub const Glyph = struct {
     width: u8,
@@ -14,7 +15,8 @@ pub const Glyph = struct {
 pub const GlyphSet = struct {
     const Self = @This();
     glyphs: [0x7F - 0x20]Glyph,
-    max: u32,
+    max_w: u32,
+    max_h: u32,
 
     fn init(self: *Self, file: []const u8) void {
         var offset: usize = 0;
@@ -26,7 +28,8 @@ pub const GlyphSet = struct {
             const top = consume(file, &offset);
             const data = file[offset .. offset + (@as(usize, width) * @as(usize, height))];
             offset += @as(u32, width) * @as(u32, height);
-            self.max = @max(width, self.max);
+            self.max_w = @max(width, self.max_w);
+            self.max_h = @max(height, self.max_h);
             self.glyphs[i] = Glyph{
                 .width = width,
                 .height = height,
@@ -46,6 +49,16 @@ pub var h1: GlyphSet = undefined;
 pub var h2: GlyphSet = undefined;
 pub var h3: GlyphSet = undefined;
 pub var p: GlyphSet = undefined;
+
+pub fn enumToGlyphSet(header: Parser.Type) GlyphSet {
+    return switch (header) {
+        .h1 => h1,
+        .h2 => h2,
+        .h3 => h3,
+        .text => p,
+        else => @panic("invalid type provided"),
+    };
+}
 
 pub fn init() void {
     h1.init(h1_f);
