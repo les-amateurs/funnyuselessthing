@@ -3,6 +3,8 @@ const mem = std.mem;
 const uefi = std.os.uefi;
 const ArrayList = std.ArrayList;
 
+const term = @import("../term.zig");
+
 const Self = @This();
 const Tokenizer = @import("tokenizer.zig");
 const Token = Tokenizer.Token;
@@ -27,8 +29,16 @@ const Type = enum {
 
 pub const Node = struct {
     type: Type,
-    children: Nodes,
+    children: Nodes = Nodes.init(heap),
     raw: []const u8 = undefined,
+
+    pub fn clone(self: Node) *Node {
+        var new = heap.create(Node) catch @panic("OOM");
+        new.type = self.type;
+        new.children = self.children.clone() catch @panic("OOM");
+        new.raw = self.raw;
+        return new;
+    }
 };
 
 tokenizer: Tokenizer,
@@ -39,14 +49,29 @@ pub fn init(data: []const u8) Self {
     };
 }
 
-pub fn matches(self: *Self, expected: []Token) bool {
-    var new = self.tokenizer.clone();
+pub fn matches(self: *Self, expected: []const Token) !bool {
+    var new = try self.tokenizer.clone();
     for (expected) |expect| {
         const token = (new.next() catch return false) orelse return false;
         if (!expect.cmp(token)) {
             return false;
         }
     }
+    return true;
+}
+
+pub fn consumeLine(self: *Self) anyerror!Nodes {
+    var nodes = Nodes.init(heap);
+    while (try self.next()) |node| {
+        term.printf("node: {s}\r\n", .{@tagName(node.type)});
+        try nodes.append(node.clone());
+        if (node.type == Type.text) {
+            if (mem.endsWith(u8, node.raw, "\n")) {
+                break;
+            }
+        }
+    }
+    return nodes;
 }
 
 pub fn next(self: *Self) !?Node {
@@ -68,35 +93,58 @@ pub fn next(self: *Self) !?Node {
         }
 
         if (token.cmp(Token.dash)) {
-            return Node{
-                .type = .listitem,
-                .children = try self.consumeLine(),
-            };
+            // return Node{
+            //     .type = .listitem,
+            //     .children = try self.consumeLine(),
+            // };
+            try fragment.append('-');
         }
 
-        if (token.cmp(Token.opening_bracket) and self.matches([_]Token{
-            Token.fragment,
-            Token.closing_bracket,
-            Token.opening_paren,
-            Token.fragment,
-            Token.closing_paren,
-        })) {
-            var children = Nodes.init(heap);
-            try children.append(self.tokenizer.gimme());
-            try self.tokenizer.skip(2);
-            try children.append(self.tokenizer.gimme());
-            try self.tokenizer.skip(1);
-            return Node{
-                .type = .link,
-                .children = children,
-            };
-        }
+        // if (token.cmp(Token.opening_bracket) and try self.matches(&[_]Token{
+        //     Token{ .fragment = undefined },
+        //     Token.closing_bracket,
+        //     Token.opening_paren,
+        //     Token{ .fragment = undefined },
+        //     Token.closing_paren,
+        // })) {
+        //     var children = Nodes.init(heap);
+        //     try children.append((Node{ .type = .text, .raw = self.tokenizer.gimme().fragment }).clone());
+        //     try self.tokenizer.skip(2);
+        //     try children.append((Node{ .type = .text, .raw = self.tokenizer.gimme().fragment }).clone());
+        //     try self.tokenizer.skip(1);
+        //     return Node{
+        //         .type = .link,
+        //         .children = children,
+        //     };
+        // }
 
-        if (token.cmp(Token.fragment)) {
+        if (token.cmp(Token{ .fragment = undefined })) {
             try fragment.appendSlice(token.fragment);
-            if (mem.endsWith(fragment.items, '\n')) {
-                return Node{ .text = fragment.items };
+            if (mem.endsWith(u8, fragment.items, "\n")) {
+                return Node{ .type = .text, .raw = fragment.items };
             }
         }
+
+        if (token.cmp(Token.opening_bracket)) {
+            try fragment.append('[');
+        }
+
+        if (token.cmp(Token.closing_bracket)) {
+            try fragment.append(']');
+        }
+
+        if (token.cmp(Token.opening_paren)) {
+            try fragment.append('(');
+        }
+
+        if (token.cmp(Token.closing_paren)) {
+            try fragment.append(')');
+        }
     }
+
+    if (fragment.items.len != 0) {
+        return Node{ .type = .text, .raw = fragment.items };
+    }
+
+    return null;
 }

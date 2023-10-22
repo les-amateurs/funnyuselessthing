@@ -47,43 +47,68 @@ pub fn main() noreturn {
     }
 
     const boot_services = uefi.system_table.boot_services.?;
+    _ = boot_services;
 
-    // main_with_error() catch |e| {
-    //     term.printf("error: {s}\r\n", .{@errorName(e)});
+    main_with_error() catch |e| {
+        term.printf("error: {s}\r\n", .{@errorName(e)});
+    };
+
+    // font.init();
+    // var fb = screen.init(boot_services);
+
+    // fb.clear();
+    // fb.text(.{ 100, 100 }, font.h1, "Hello World!");
+    // fb.text(.{ 100, 140 }, font.h2, "Hello World!");
+    // fb.text(.{ 100, 160 }, font.h3, "Hello World!");
+    // fb.text(.{ 100, 175 }, font.p, "Hello World!");
+
+    // var example_tree = Parser.Nodes.init(heap);
+    // var hchildren = Parser.Nodes.init(heap);
+    // var text_frag = Parser.Node{
+    //     .type = .text,
+    //     .children = undefined,
+    //     .raw = "LMAO",
     // };
-
-    font.init();
-    var fb = screen.init(boot_services);
-
-    fb.clear();
-    fb.text(.{ 100, 100 }, font.h1, "Hello World!");
-    fb.text(.{ 100, 140 }, font.h2, "Hello World!");
-    fb.text(.{ 100, 160 }, font.h3, "Hello World!");
-    fb.text(.{ 100, 175 }, font.p, "Hello World!");
-
-    var example_tree = Parser.Nodes.init(heap);
-    var hchildren = Parser.Nodes.init(heap);
-    var text_frag = Parser.Node{
-        .type = .text,
-        .children = undefined,
-        .raw = "LMAO",
-    };
-    hchildren.append(&text_frag) catch @panic("OOM");
-    var header = Parser.Node{
-        .type = .h1,
-        .children = hchildren,
-    };
-    example_tree.append(&header) catch @panic("OOM");
+    // hchildren.append(&text_frag) catch @panic("OOM");
+    // var header = Parser.Node{
+    //     .type = .h1,
+    //     .children = hchildren,
+    // };
+    // example_tree.append(&header) catch @panic("OOM");
 
     arch.hang();
 }
 
 fn main_with_error() !void {
-    var data = "#### LMFAO\n- item";
+    var data =
+        \\#    HEADER 1
+        \\##   HEADER 2
+        \\###  HEADER 3
+        \\- LIST ITEM 1
+        \\- LIST ITEM 2
+        \\THIS IS SOME TEXT
+        \\[URL](wow)
+        \\
+    ;
     var parser = Parser.init(data);
 
     while (try parser.next()) |node| {
-        term.printf("node: {any}\r\n", .{node});
+        term.printf("type: {s}\r\n", .{@tagName(node.type)});
+        switch (node.type) {
+            .h1, .h2, .h3 => {
+                term.printf("header: {s}\r\n", .{node.children.items[0].raw});
+            },
+            .listitem => {
+                term.printf("list: {s}\r\n", .{node.children.items[0].raw});
+            },
+            .link => {
+                term.printf("url: {s} {s}\r\n", .{ node.children.items[0].raw, node.children.items[1].raw });
+            },
+            .text => {
+                term.printf("text: {s}\r\n", .{node.raw});
+            },
+            else => {},
+        }
     }
 
     term.printf("wtf this worked???\n", .{});
