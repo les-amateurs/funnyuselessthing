@@ -17,61 +17,14 @@ const font = @import("font.zig");
 
 var heap = uefi.pool_allocator;
 
-// MSFROG OS ascii art
-const logo = [_][]const u8{
-    \\ __  __  _____ ______ _____   ____   _____    ____   _____ 
-    ,
-    \\|  \/  |/ ____|  ____|  __ \ / __ \ / ____|  / __ \ / ____|
-    ,
-    \\| |\/| |\___ \|  __| |  _  /| |  | | | |_ | | |  | |\___ \ 
-    ,
-    \\| |  | |____) | |    | | \ \| |__| | |__| | | |__| |____) |
-    ,
-    \\|_|  |_|_____/|_|    |_|  \_\\____/ \_____|  \____/|_____/ 
-    ,
-    \\===========================================================
-    ,
-    "\r\n",
-};
-
-fn callback(event: uefi.Event, ctx: ?*anyopaque) callconv(cc) void {
-    _ = ctx;
-    _ = event;
-    term.printf("[!] callback!\r\n", .{});
-}
-
 pub fn main() noreturn {
     term.init();
-    for (logo) |line| {
-        term.printf("{s}\r\n", .{line});
-    }
 
     const boot_services = uefi.system_table.boot_services.?;
-
-    main_with_error() catch |e| {
-        term.printf("error: {s}\r\n", .{@errorName(e)});
-    };
+    _ = boot_services.setWatchdogTimer(0, 0, 0, null);
 
     var fb = screen.init(boot_services);
-
-    fb.clear();
-    font.init();
-    var example_tree = Parser.Nodes.init(heap);
-    var hchildren = Parser.Nodes.init(heap);
-    var text_frag = Parser.Node{
-        .type = .text,
-        .children = undefined,
-        .raw = "LMAO",
-    };
-    hchildren.append(&text_frag) catch @panic("OOM");
-    var header = Parser.Node{
-        .type = .h1,
-        .children = hchildren,
-    };
-    example_tree.append(&header) catch @panic("OOM");
-
-    var scroll: u32 = 16;
-    fb.markdown(example_tree, &scroll, null);
+    _ = fb;
 
     // ESC is scan code 17
     // otherwise it returns the character
