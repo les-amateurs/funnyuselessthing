@@ -54,7 +54,7 @@ fn moveCursor(dir: Dir) void {
             col = 0;
         },
         .down => {
-            if (line == @as(u32, @truncate(file.items.len - 1))) return;
+            if (line == @as(u32, @truncate(file.items.len))) return;
             line += 1;
             col = 0;
         },
@@ -77,11 +77,9 @@ fn switchMode() void {
             for (file.items) |row| {
                 string = mem.concat(heap, u8, &[_][]const u8{ string, "\n", row.items }) catch @panic("OOM");
             }
-            term.printf("parser\r\n", .{});
             var p = Parser.init(string);
             var nodes = Parser.Nodes.init(heap);
             while (p.next() catch @panic("oops node failed")) |node| {
-                term.printf("node type: {s}\r\n", .{@tagName(node.type)});
                 nodes.append(node.clone()) catch @panic("OOM");
             }
             var scroll: u32 = 16;
@@ -121,7 +119,7 @@ pub fn main() noreturn {
                         continue;
                     }
                 },
-                17 => {
+                0x17 => {
                     switchMode();
                     continue;
                 },
@@ -132,6 +130,11 @@ pub fn main() noreturn {
                 .edit => {
                     if (key.unicode_char == 0x0d) {
                         addLine();
+                    } else if (key.unicode_char == 8) {
+                        if (line < file.items.len and col < file.items[line].items.len + 1 and col > 0) {
+                            _ = file.items[line].orderedRemove(col - 1);
+                            moveCursor(.left);
+                        }
                     } else if (key.unicode_char > 0) {
                         typeChar(@as(u8, @truncate(key.unicode_char)));
                     }
@@ -140,8 +143,8 @@ pub fn main() noreturn {
                 .visual => {},
             }
 
-            term.printf("ch: {x}\r\n", .{key.unicode_char});
-            term.printf("sc: {x}\r\n", .{key.scan_code});
+            // term.printf("ch: {x}\r\n", .{key.unicode_char});
+            // term.printf("sc: {x}\r\n", .{key.scan_code});
         }
     }
 

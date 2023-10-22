@@ -63,7 +63,6 @@ pub fn matches(self: *Self, expected: []const Token) !bool {
 pub fn consumeLine(self: *Self) anyerror!Nodes {
     var nodes = Nodes.init(heap);
     while (try self.next()) |node| {
-        term.printf("node: {s}\r\n", .{@tagName(node.type)});
         try nodes.append(node.clone());
         if (node.type == Type.text) {
             if (mem.endsWith(u8, node.raw, "\n")) {
@@ -79,6 +78,7 @@ pub fn next(self: *Self) !?Node {
 
     while (try self.tokenizer.next()) |token| {
         if (token.cmp(Token{ .hash = 0 })) {
+            var children = try self.consumeLine();
             return Node{
                 .type = switch (token.hash) {
                     1 => .h1,
@@ -88,7 +88,7 @@ pub fn next(self: *Self) !?Node {
                     5 => .h5,
                     else => .h6,
                 },
-                .children = try self.consumeLine(),
+                .children = children,
             };
         }
 
