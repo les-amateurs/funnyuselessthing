@@ -96,7 +96,6 @@ pub const FrameBuffer = struct {
                     self.markdown(node.children, scroll, glyphSet);
                 },
                 .text => {
-                    term.printf("frag: {s}\r\n", .{ node.raw });
                     var textFont: font.GlyphSet = undefined;
                     if (inheritedFont) |f| {
                         textFont = f;

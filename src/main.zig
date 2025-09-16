@@ -180,7 +180,6 @@ fn main_with_error() !void {
     var parser = Parser.init(data);
 
     while (try parser.next()) |node| {
-        term.printf("type: {s}\r\n", .{@tagName(node.type)});
         switch (node.type) {
             else => {},
         }
